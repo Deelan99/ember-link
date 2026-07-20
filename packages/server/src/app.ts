@@ -45,6 +45,10 @@ export async function buildApp(): Promise<FastifyInstance> {
         baseUri: ["'self'"],
         frameAncestors: ["'none'"],
         formAction: ["'self'"],
+        // Helmet appends this by default, which makes browsers rewrite same-origin
+        // asset requests to https:// — breaks any plain-HTTP deployment (e.g. a
+        // reverse proxy that terminates TLS upstream, or local testing).
+        upgradeInsecureRequests: null,
       },
     },
   })
