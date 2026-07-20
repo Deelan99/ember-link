@@ -1,0 +1,17 @@
+node_modules/
+dist/
+build/
+*.log
+.DS_Store
+.env
+.env.local
+.env.*.local
+
+# server runtime data (SQLite DB)
+packages/server/data/
+
+# tauri build artifacts
+packages/desktop/src-tauri/target/
+packages/desktop/src-tauri/gen/
+packages/desktop/node_modules/
+CLAUDE.md

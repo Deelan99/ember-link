@@ -1,0 +1,22 @@
+{
+  "name": "emberlink",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Zero-knowledge one-time secret sharing for API keys, passwords and other confidential text.",
+  "workspaces": [
+    "packages/web",
+    "packages/server"
+  ],
+  "scripts": {
+    "dev:web": "npm run dev -w @emberlink/web",
+    "dev:server": "npm run dev -w @emberlink/server",
+    "dev:desktop": "npm --prefix packages/desktop run dev",
+    "build": "npm run build -w @emberlink/web && npm run build -w @emberlink/server",
+    "start": "npm run start -w @emberlink/server",
+    "test": "npm run test -w @emberlink/web && npm run test -w @emberlink/server"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
