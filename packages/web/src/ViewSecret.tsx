@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react'
-import { decryptSecret } from './crypto'
+import { decryptSecret, type EncryptedPayload } from './crypto'
 import { consumeSecret, getMeta } from './api'
 
 type Phase = 'loading' | 'ready' | 'gone' | 'revealed' | 'error'
+type Ciphertext = Pick<EncryptedPayload, 'ciphertext' | 'iv' | 'salt'>
+
+const MAX_PASSPHRASE_ATTEMPTS = 3
 
 export function ViewSecret({ id }: { id: string }) {
   const fragmentKey = window.location.hash.slice(1)
@@ -13,6 +16,12 @@ export function ViewSecret({ id }: { id: string }) {
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [copied, setCopied] = useState(false)
+  // The server hands over the ciphertext exactly once (that's the real "view
+  // once" guarantee). We cache it here so a wrong passphrase can be retried
+  // locally without another round trip — the server never sees the passphrase
+  // either way, so this doesn't change what the server can or can't disclose.
+  const [ciphertext, setCiphertext] = useState<Ciphertext | null>(null)
+  const [attemptsLeft, setAttemptsLeft] = useState(MAX_PASSPHRASE_ATTEMPTS)
 
   useEffect(() => {
     if (!fragmentKey) {
@@ -42,22 +51,35 @@ export function ViewSecret({ id }: { id: string }) {
     setBusy(true)
     setError(null)
     try {
-      const data = await consumeSecret(id)
+      let data = ciphertext
       if (!data) {
-        setPhase('gone')
-        return
+        const fetched = await consumeSecret(id)
+        if (!fetched) {
+          setPhase('gone')
+          return
+        }
+        // The secret is now destroyed server-side. Decryption (and any passphrase
+        // retries) happens entirely locally from here on.
+        data = fetched
+        setCiphertext(fetched)
       }
-      // The secret is now destroyed server-side. Decryption happens locally.
       const plaintext = await decryptSecret(data, fragmentKey, hasPassphrase ? passphrase : undefined)
       setSecret(plaintext)
       setPhase('revealed')
     } catch {
-      setError(
-        hasPassphrase
-          ? 'Could not decrypt — the passphrase may be wrong. This link has now been used and cannot be opened again.'
-          : 'Could not decrypt this secret. The link may be corrupted.',
-      )
-      setPhase('error')
+      const remaining = attemptsLeft - 1
+      setAttemptsLeft(remaining)
+      if (hasPassphrase && remaining > 0) {
+        setPassphrase('')
+        setError(`Wrong passphrase. ${remaining} attempt${remaining === 1 ? '' : 's'} left.`)
+      } else {
+        setError(
+          hasPassphrase
+            ? 'Could not decrypt — the passphrase was wrong too many times. This link has now been used and cannot be opened again.'
+            : 'Could not decrypt this secret. The link may be corrupted.',
+        )
+        setPhase('error')
+      }
     } finally {
       setBusy(false)
     }
@@ -140,9 +162,10 @@ export function ViewSecret({ id }: { id: string }) {
             />
           </label>
           <p className="warn">
-            You get one attempt. If the passphrase is wrong, the secret is destroyed and cannot be
-            recovered.
+            You get {MAX_PASSPHRASE_ATTEMPTS} attempts. If they all fail, the secret is destroyed and
+            cannot be recovered.
           </p>
+          {error && <p className="error">{error}</p>}
         </>
       )}
       <button

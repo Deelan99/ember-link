@@ -14,6 +14,7 @@
     "dev:desktop": "npm --prefix packages/desktop run dev",
     "build": "npm run build -w @emberlink/web && npm run build -w @emberlink/server",
     "start": "npm run start -w @emberlink/server",
+    "start:phone": "npm run build && PORT=8080 NODE_ENV=production TLS_KEY_FILE=certs/key.pem TLS_CERT_FILE=certs/cert.pem npm run start -w @emberlink/server",
     "test": "npm run test -w @emberlink/web && npm run test -w @emberlink/server"
   },
   "engines": {
