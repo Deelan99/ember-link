@@ -10,6 +10,9 @@ build/
 # server runtime data (SQLite DB)
 packages/server/data/
 
+# local-dev TLS certs (mkcert)
+packages/server/certs/
+
 # tauri build artifacts
 packages/desktop/src-tauri/target/
 packages/desktop/src-tauri/gen/

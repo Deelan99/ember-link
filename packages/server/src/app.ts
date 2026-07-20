@@ -4,7 +4,8 @@ import rateLimit from '@fastify/rate-limit'
 import cors from '@fastify/cors'
 import fastifyStatic from '@fastify/static'
 import { randomBytes } from 'node:crypto'
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
+import type { ServerOptions } from 'node:https'
 import { fileURLToPath } from 'node:url'
 import { claimSecret, getMeta, insertSecret } from './db.js'
 
@@ -26,11 +27,24 @@ function newId(): string {
   return randomBytes(16).toString('base64url')
 }
 
+// Optional: point these at a local cert (e.g. from mkcert) to serve HTTPS directly.
+// Needed for testing on a phone/other device on the LAN, since the Web Crypto API
+// only runs in a secure context and a LAN IP doesn't qualify for that over plain HTTP.
+const { TLS_KEY_FILE, TLS_CERT_FILE } = process.env
+
 export async function buildApp(): Promise<FastifyInstance> {
-  const app = Fastify({
-    logger: process.env.NODE_ENV === 'test' ? false : true,
-    bodyLimit: MAX_BODY,
-  })
+  const https: ServerOptions | undefined =
+    TLS_KEY_FILE && TLS_CERT_FILE
+      ? { key: readFileSync(TLS_KEY_FILE), cert: readFileSync(TLS_CERT_FILE) }
+      : undefined
+
+  // Cast away the http/https server generic split: nothing below touches the raw
+  // server, only the (identical) Fastify request/reply API.
+  const app = (
+    https
+      ? Fastify({ logger: process.env.NODE_ENV === 'test' ? false : true, bodyLimit: MAX_BODY, https })
+      : Fastify({ logger: process.env.NODE_ENV === 'test' ? false : true, bodyLimit: MAX_BODY })
+  ) as FastifyInstance
 
   await app.register(helmet, {
     contentSecurityPolicy: {
