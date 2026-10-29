@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Emberlink — zero-knowledge, one-time secret sharing. Download the desktop app for macOS or Windows."
+    />
+    <meta name="theme-color" content="#0e1116" />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext x='50' y='78' font-size='80' text-anchor='middle'%3E%F0%9F%94%A5%3C/text%3E%3C/svg%3E"
+    />
+    <title>Emberlink — download</title>
+    <style>
+      :root {
+        --bg: #0e1116;
+        --bg-grad: radial-gradient(1200px 600px at 50% -10%, #1b2330 0%, #0e1116 55%);
+        --card: #161b22;
+        --card-border: #263041;
+        --text: #e6edf3;
+        --muted: #9aa7b8;
+        --accent: #ff7a45;
+        --accent-2: #ff9d33;
+        --input-border: #30363d;
+        --input-bg: #0d1117;
+        --radius: 14px;
+        --shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+      }
+      @media (prefers-color-scheme: light) {
+        :root {
+          --bg: #f4f6fb;
+          --bg-grad: radial-gradient(1200px 600px at 50% -10%, #ffe9df 0%, #f4f6fb 55%);
+          --card: #ffffff;
+          --card-border: #e6e9f0;
+          --text: #1b2230;
+          --muted: #5b6675;
+          --input-border: #d3d9e2;
+          --input-bg: #f8fafc;
+          --shadow: 0 20px 50px rgba(20, 30, 60, 0.12);
+        }
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial,
+          sans-serif;
+        color: var(--text);
+        background: var(--bg);
+        background-image: var(--bg-grad);
+        background-attachment: fixed;
+        -webkit-font-smoothing: antialiased;
+      }
+      .page {
+        max-width: 620px;
+        margin: 0 auto;
+        padding: 48px 20px 40px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        min-height: 100vh;
+        text-align: center;
+      }
+      .brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 8px;
+      }
+      .brand-mark {
+        font-size: 28px;
+      }
+      .brand-name {
+        font-size: 26px;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+      }
+      .tagline {
+        margin: 0 0 24px;
+        color: var(--muted);
+        font-size: 15px;
+      }
+      .card {
+        width: 100%;
+        background: var(--card);
+        border: 1px solid var(--card-border);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        padding: 28px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+      p {
+        margin: 0;
+        line-height: 1.5;
+      }
+      .muted {
+        color: var(--muted);
+        font-size: 14.5px;
+      }
+      .downloads {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        justify-content: center;
+      }
+      .btn {
+        appearance: none;
+        border: 1px solid var(--input-border);
+        background: var(--input-bg);
+        color: var(--text);
+        padding: 12px 20px;
+        border-radius: 10px;
+        font-size: 15px;
+        font-weight: 600;
+        text-decoration: none;
+        flex: 1;
+        min-width: 180px;
+        transition: filter 0.15s ease;
+      }
+      .btn:hover {
+        filter: brightness(1.08);
+      }
+      .btn-primary {
+        background: linear-gradient(135deg, var(--accent), var(--accent-2));
+        border-color: transparent;
+        color: #1a1207;
+      }
+      .footnote {
+        margin-top: 22px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+      a {
+        color: var(--accent);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">🔥</span>
+        <span class="brand-name">Emberlink</span>
+      </div>
+      <p class="tagline">One-time secrets that burn after reading</p>
+      <div class="card">
+        <p>
+          Emberlink is a zero-knowledge, one-time secret sharing tool. Secrets are encrypted in
+          your browser with the Web Crypto API before anything is sent anywhere — the server never
+          sees the key or the plaintext. Links work once, then self-destruct.
+        </p>
+        <p class="muted">
+          The desktop app is a convenience wrapper for <strong>creating</strong> secrets.
+          Recipients open links in any regular browser — no install needed.
+        </p>
+        <div class="downloads">
+          <a
+            class="btn btn-primary"
+            href="https://github.com/Deelan99/ember-link/releases/latest"
+          >
+            Download for macOS
+          </a>
+          <a class="btn" href="https://github.com/Deelan99/ember-link/releases/latest">
+            Download for Windows
+          </a>
+        </div>
+        <p class="muted">
+          Builds are currently unsigned. If macOS says the app is from an unidentified developer,
+          right-click (or Control-click) the app and choose <strong>Open</strong>.
+        </p>
+      </div>
+      <p class="footnote">
+        <a href="https://github.com/Deelan99/ember-link">Source on GitHub</a>
+      </p>
+    </div>
+  </body>
+</html>

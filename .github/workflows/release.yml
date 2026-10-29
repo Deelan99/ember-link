@@ -1,0 +1,59 @@
+name: Release desktop app
+
+# Builds unsigned macOS/Windows installers and attaches them to a draft
+# GitHub Release. Trigger by pushing a tag like v0.1.0.
+#
+# Requires two repo secrets pointing at wherever the server (packages/server,
+# serving the built web app + API from one origin) is actually deployed:
+#   DESKTOP_PUBLIC_URL - e.g. https://secrets.example.com (used to build shareable links)
+#   DESKTOP_API_BASE   - usually the same URL
+# Until the server has a real deployment, set both to a placeholder; builds
+# made before that will generate links that don't resolve anywhere.
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [macos-latest, windows-latest]
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.x"
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - run: npm ci
+
+      - name: Build web app for the deployed server
+        run: npm run build -w @emberlink/web
+        env:
+          VITE_PUBLIC_URL: ${{ secrets.DESKTOP_PUBLIC_URL }}
+          VITE_API_BASE: ${{ secrets.DESKTOP_API_BASE }}
+
+      - run: npm install --prefix packages/desktop
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          projectPath: packages/desktop
+          tagName: ${{ github.ref_name }}
+          releaseName: "Emberlink ${{ github.ref_name }}"
+          releaseBody: >
+            Unsigned build. On macOS, if Gatekeeper warns the app is from an
+            unidentified developer, right-click (or Control-click) the app and
+            choose Open.
+          releaseDraft: true

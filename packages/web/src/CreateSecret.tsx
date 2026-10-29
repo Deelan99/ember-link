@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { encryptSecret } from './crypto'
 import { buildLink, createSecret } from './api'
 
@@ -7,6 +7,8 @@ const TTL_OPTIONS = [
   { label: '24 hours', value: 24 * 60 * 60 * 1000 },
   { label: '7 days', value: 7 * 24 * 60 * 60 * 1000 },
 ]
+
+const MAX_SECRET_LENGTH = 100_000
 
 export function CreateSecret() {
   const [secret, setSecret] = useState('')
@@ -17,6 +19,11 @@ export function CreateSecret() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  const copiedTimeout = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+
+  useEffect(() => {
+    return () => clearTimeout(copiedTimeout.current)
+  }, [])
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -44,7 +51,8 @@ export function CreateSecret() {
     try {
       await navigator.clipboard.writeText(link)
       setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
+      clearTimeout(copiedTimeout.current)
+      copiedTimeout.current = setTimeout(() => setCopied(false), 2000)
     } catch {
       /* clipboard may be blocked; user can copy manually */
     }
@@ -61,7 +69,7 @@ export function CreateSecret() {
 
   if (link) {
     return (
-      <div className="stack">
+      <div className="stack" aria-live="polite">
         <h1>Your one-time link is ready</h1>
         <p className="muted">
           Share it with the recipient. It works <strong>once</strong>, then self-destructs.
@@ -105,6 +113,10 @@ export function CreateSecret() {
           autoFocus
           spellCheck={false}
         />
+        <span className="field-hint">
+          {secret.length.toLocaleString()} characters
+          {secret.length > MAX_SECRET_LENGTH && ' — this is a lot; consider splitting it up'}
+        </span>
       </label>
 
       <label className="field">
@@ -143,10 +155,15 @@ export function CreateSecret() {
             required
             spellCheck={false}
           />
+          <span className="field-hint">Longer passphrases are harder to guess.</span>
         </label>
       )}
 
-      {error && <p className="error">{error}</p>}
+      {error && (
+        <p className="error" role="alert">
+          {error}
+        </p>
+      )}
 
       <button className="btn btn-primary" type="submit" disabled={busy || secret.length === 0}>
         {busy ? 'Encrypting…' : 'Create one-time link'}

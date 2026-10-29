@@ -12,12 +12,22 @@ export interface SecretMeta {
   hasPassphrase: boolean
 }
 
-export interface CreatePayload extends Omit<EncryptedPayload, never> {
+export interface CreatePayload extends EncryptedPayload {
   ttlMs: number
 }
 
+const NETWORK_ERROR = 'Could not reach the server. Check your connection and try again.'
+
+async function fetchOrThrow(url: string, init?: RequestInit): Promise<Response> {
+  try {
+    return await fetch(url, init)
+  } catch {
+    throw new Error(NETWORK_ERROR)
+  }
+}
+
 export async function createSecret(payload: CreatePayload): Promise<{ id: string }> {
-  const res = await fetch(`${API_BASE}/api/secrets`, {
+  const res = await fetchOrThrow(`${API_BASE}/api/secrets`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(payload),
@@ -31,7 +41,7 @@ export function buildLink(id: string, fragmentKey: string): string {
 }
 
 export async function getMeta(id: string): Promise<SecretMeta> {
-  const res = await fetch(`${API_BASE}/api/secrets/${id}/meta`)
+  const res = await fetchOrThrow(`${API_BASE}/api/secrets/${id}/meta`)
   if (!res.ok) return { exists: false, hasPassphrase: false }
   return res.json()
 }
@@ -40,7 +50,7 @@ export async function getMeta(id: string): Promise<SecretMeta> {
 export async function consumeSecret(
   id: string,
 ): Promise<Pick<EncryptedPayload, 'ciphertext' | 'iv' | 'salt' | 'hasPassphrase'> | null> {
-  const res = await fetch(`${API_BASE}/api/secrets/${id}/consume`, { method: 'POST' })
+  const res = await fetchOrThrow(`${API_BASE}/api/secrets/${id}/consume`, { method: 'POST' })
   if (res.status === 404) return null
   if (!res.ok) throw new Error('Failed to retrieve the secret.')
   return res.json()

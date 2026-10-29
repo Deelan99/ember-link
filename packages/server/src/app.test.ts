@@ -13,11 +13,21 @@ beforeAll(async () => {
   await app.ready()
 })
 
+// Real iv/salt are base64url of a 12-byte / 16-byte buffer -> exactly 16 / 22 chars.
+const VALID_IV = 'AAAAAAAAAAAAAAAA'
+const VALID_SALT = 'AAAAAAAAAAAAAAAAAAAAAA'
+
 async function createSecret(overrides: Record<string, unknown> = {}): Promise<string> {
   const res = await app.inject({
     method: 'POST',
     url: '/api/secrets',
-    payload: { ciphertext: 'Y2lwaGVy', iv: 'aXZpdml2', salt: 'c2FsdA', hasPassphrase: false, ...overrides },
+    payload: {
+      ciphertext: 'Y2lwaGVy',
+      iv: VALID_IV,
+      salt: VALID_SALT,
+      hasPassphrase: false,
+      ...overrides,
+    },
   })
   expect(res.statusCode).toBe(200)
   return res.json().id as string
@@ -27,6 +37,21 @@ describe('one-time secret lifecycle', () => {
   it('rejects an invalid payload', async () => {
     const res = await app.inject({ method: 'POST', url: '/api/secrets', payload: { iv: 'x' } })
     expect(res.statusCode).toBe(400)
+  })
+
+  it('rejects an iv/salt of the wrong length', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/secrets',
+      payload: { ciphertext: 'Y2lwaGVy', iv: 'tooshort', salt: VALID_SALT, hasPassphrase: false },
+    })
+    expect(res.statusCode).toBe(400)
+  })
+
+  it('reports healthy', async () => {
+    const res = await app.inject({ url: '/healthz' })
+    expect(res.statusCode).toBe(200)
+    expect(res.json()).toEqual({ ok: true })
   })
 
   it('reports metadata without consuming', async () => {

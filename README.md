@@ -104,9 +104,13 @@ npm run test -w @emberlink/server # one-time consume + metadata semantics
 
 ## Security notes & trade-offs
 
-- **Passphrase = one attempt.** Because a secret is destroyed the moment it's
-  fetched, a wrong passphrase means it's gone (the server can't verify the
-  passphrase without weakening zero-knowledge). The UI warns the recipient.
+- **Passphrase = one server fetch, up to 3 local attempts.** The ciphertext is
+  claimed and deleted server-side the moment it's fetched — that single fetch
+  is the real one-time guarantee. The browser then caches that ciphertext and
+  retries decryption locally up to 3 times for passphrase typos, without ever
+  asking the server again (the server can't verify the passphrase without
+  weakening zero-knowledge). If all 3 local attempts fail, the secret is gone
+  for good. The UI warns the recipient.
 - **Share the passphrase out-of-band** — never in the same message as the link.
 - Run behind **HTTPS** in production; the server sets HSTS, a strict CSP
   (no external JS), and rate limits the API.

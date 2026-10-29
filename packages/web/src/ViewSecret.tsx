@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { decryptSecret, type EncryptedPayload } from './crypto'
 import { consumeSecret, getMeta } from './api'
 
@@ -22,6 +22,7 @@ export function ViewSecret({ id }: { id: string }) {
   // either way, so this doesn't change what the server can or can't disclose.
   const [ciphertext, setCiphertext] = useState<Ciphertext | null>(null)
   const [attemptsLeft, setAttemptsLeft] = useState(MAX_PASSPHRASE_ATTEMPTS)
+  const copiedTimeout = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   useEffect(() => {
     if (!fragmentKey) {
@@ -40,12 +41,19 @@ export function ViewSecret({ id }: { id: string }) {
           setPhase('ready')
         }
       })
-      .catch(() => !cancelled && setPhase('gone'))
+      .catch(() => {
+        if (cancelled) return
+        setError('Could not check this link — check your connection and try again.')
+        setPhase('error')
+      })
     return () => {
       cancelled = true
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
+
+  useEffect(() => {
+    return () => clearTimeout(copiedTimeout.current)
+  }, [])
 
   async function reveal() {
     setBusy(true)
@@ -53,15 +61,22 @@ export function ViewSecret({ id }: { id: string }) {
     try {
       let data = ciphertext
       if (!data) {
-        const fetched = await consumeSecret(id)
-        if (!fetched) {
-          setPhase('gone')
+        try {
+          const fetched = await consumeSecret(id)
+          if (!fetched) {
+            setPhase('gone')
+            return
+          }
+          // The secret is now destroyed server-side. Decryption (and any passphrase
+          // retries) happens entirely locally from here on.
+          data = fetched
+          setCiphertext(fetched)
+        } catch {
+          // Fetch failed before the secret was claimed — nothing was consumed or
+          // decrypted, so this must not count against the passphrase attempt limit.
+          setError('Could not reach the server. Check your connection and try again.')
           return
         }
-        // The secret is now destroyed server-side. Decryption (and any passphrase
-        // retries) happens entirely locally from here on.
-        data = fetched
-        setCiphertext(fetched)
       }
       const plaintext = await decryptSecret(data, fragmentKey, hasPassphrase ? passphrase : undefined)
       setSecret(plaintext)
@@ -89,19 +104,24 @@ export function ViewSecret({ id }: { id: string }) {
     try {
       await navigator.clipboard.writeText(secret)
       setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
+      clearTimeout(copiedTimeout.current)
+      copiedTimeout.current = setTimeout(() => setCopied(false), 2000)
     } catch {
       /* ignore */
     }
   }
 
   if (phase === 'loading') {
-    return <p className="muted">Checking link…</p>
+    return (
+      <p className="muted" aria-live="polite">
+        Checking link…
+      </p>
+    )
   }
 
   if (phase === 'gone') {
     return (
-      <div className="stack">
+      <div className="stack" aria-live="polite">
         <h1>Nothing to see here</h1>
         <p className="muted">
           This secret has already been viewed, has expired, or never existed. For your security it
@@ -116,9 +136,11 @@ export function ViewSecret({ id }: { id: string }) {
 
   if (phase === 'error') {
     return (
-      <div className="stack">
+      <div className="stack" aria-live="polite">
         <h1>Couldn’t open this secret</h1>
-        <p className="error">{error}</p>
+        <p className="error" role="alert">
+          {error}
+        </p>
         <a className="btn btn-ghost" href="/">
           Create your own secret
         </a>
@@ -128,7 +150,7 @@ export function ViewSecret({ id }: { id: string }) {
 
   if (phase === 'revealed') {
     return (
-      <div className="stack">
+      <div className="stack" aria-live="polite">
         <h1>Here is the secret</h1>
         <pre className="secret-output">{secret}</pre>
         <button type="button" className="btn" onClick={copySecret}>
@@ -165,8 +187,12 @@ export function ViewSecret({ id }: { id: string }) {
             You get {MAX_PASSPHRASE_ATTEMPTS} attempts. If they all fail, the secret is destroyed and
             cannot be recovered.
           </p>
-          {error && <p className="error">{error}</p>}
         </>
+      )}
+      {error && (
+        <p className="error" role="alert">
+          {error}
+        </p>
       )}
       <button
         type="button"

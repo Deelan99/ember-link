@@ -14,6 +14,12 @@ const SEVEN_DAYS = 7 * 24 * 60 * ONE_MINUTE
 const DEFAULT_TTL = 24 * 60 * ONE_MINUTE
 const MAX_BODY = 1024 * 1024 // 1 MB ciphertext cap
 
+// crypto.ts always produces a 12-byte IV and 16-byte salt, which base64url-encode
+// (no padding) to exactly 16 and 22 characters respectively.
+const IV_RE = /^[A-Za-z0-9_-]{16}$/
+const SALT_RE = /^[A-Za-z0-9_-]{22}$/
+const BASE64URL_RE = /^[A-Za-z0-9_-]+$/
+
 interface CreateBody {
   ciphertext?: unknown
   iv?: unknown
@@ -77,13 +83,18 @@ export async function buildApp(): Promise<FastifyInstance> {
     await app.register(cors, { origin: true })
   }
 
+  app.get('/healthz', async () => ({ ok: true }))
+
   app.post('/api/secrets', async (req, reply) => {
     const b = (req.body ?? {}) as CreateBody
     if (
       typeof b.ciphertext !== 'string' ||
       typeof b.iv !== 'string' ||
       typeof b.salt !== 'string' ||
-      b.ciphertext.length === 0
+      b.ciphertext.length === 0 ||
+      !BASE64URL_RE.test(b.ciphertext) ||
+      !IV_RE.test(b.iv) ||
+      !SALT_RE.test(b.salt)
     ) {
       return reply.code(400).send({ error: 'invalid payload' })
     }
@@ -110,17 +121,22 @@ export async function buildApp(): Promise<FastifyInstance> {
   })
 
   // Destructive: atomically claims + deletes, returning the ciphertext once.
-  app.post('/api/secrets/:id/consume', async (req, reply) => {
-    const { id } = req.params as { id: string }
-    const row = claimSecret(id)
-    if (!row) return reply.code(404).send({ error: 'not found' })
-    return {
-      ciphertext: row.ciphertext,
-      iv: row.iv,
-      salt: row.salt,
-      hasPassphrase: Boolean(row.has_passphrase),
-    }
-  })
+  // Stricter limit than the global default since this is the route that burns a link.
+  app.post(
+    '/api/secrets/:id/consume',
+    { config: { rateLimit: { max: 20, timeWindow: '1 minute' } } },
+    async (req, reply) => {
+      const { id } = req.params as { id: string }
+      const row = claimSecret(id)
+      if (!row) return reply.code(404).send({ error: 'not found' })
+      return {
+        ciphertext: row.ciphertext,
+        iv: row.iv,
+        salt: row.salt,
+        hasPassphrase: Boolean(row.has_passphrase),
+      }
+    },
+  )
 
   // Serve the built web app (create UI + viewer) when it exists.
   const webDist = fileURLToPath(new URL('../../web/dist', import.meta.url))
